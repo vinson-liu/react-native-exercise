@@ -6,106 +6,185 @@
  * @flow strict-local
  */
 
-import React from 'react';
-import type {Node} from 'react';
+import React, {useState} from 'react';
+
 import {
+  FlatList,
   SafeAreaView,
-  ScrollView,
   StatusBar,
   StyleSheet,
+  Switch,
   Text,
+  TextInput,
+  TouchableOpacity,
   useColorScheme,
   View,
 } from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-const Section = ({children, title}): Node => {
+const Form = ({submitEntry}) => {
   const isDarkMode = useColorScheme() === 'dark';
+  const textColor = {
+    color: isDarkMode ? '#F3F3F3' : '#222',
+  };
+  const [text, setText] = useState('');
+  const submit = () => {
+    if (!text) {
+      return;
+    }
+    if (submitEntry(text)) {
+      setText('');
+    } else {
+      alert('Item already exists');
+    }
+  };
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+    <View style={styles.form}>
+      <Text style={[styles.heading, textColor]}>Create a Todo List</Text>
+      <TextInput
+        style={[styles.border, styles.input, textColor]}
+        onChangeText={setText}
+        onSubmitEditing={submit}
+        value={text}
+        placeholder="What do you want to do?"
+        maxLength={50}
+      />
     </View>
   );
 };
 
-const App: () => Node = () => {
+const Item = ({text, isDone, setIsDone, delItem, index}) => {
   const isDarkMode = useColorScheme() === 'dark';
+  const textStyle = {
+    color: isDarkMode ? '#F3F3F3' : '#222',
+    textDecorationLine: isDone ? 'line-through' : 'none',
+  };
+  return (
+    <View style={[styles.border, styles.itemRow]}>
+      <Switch onValueChange={value => setIsDone(value, index)} value={isDone} />
+      <Text style={[styles.itemText, textStyle]}>{text}</Text>
+      <TouchableOpacity style={styles.delButton} onPress={() => delItem(index)}>
+        <Text style={styles.delButtonText}>X</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
 
+const TodoList = ({list, setIsDone, delItem}) => {
+  const isDarkMode = useColorScheme() === 'dark';
+  const textColor = {
+    color: isDarkMode ? '#F3F3F3' : '#222',
+  };
+  const renderItem = ({item, index}) => {
+    return (
+      <Item
+        text={item.text}
+        isDone={item.isDone}
+        setIsDone={setIsDone}
+        delItem={delItem}
+        index={index}
+      />
+    );
+  };
+  return (
+    <View style={styles.flexCommon}>
+      <Text style={[styles.heading, textColor]}>Todo Items</Text>
+      <FlatList data={list} renderItem={renderItem} />
+    </View>
+  );
+};
+
+const App = () => {
+  const isDarkMode = useColorScheme() === 'dark';
   const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+    backgroundColor: isDarkMode ? '#222' : '#F3F3F3',
+  };
+
+  const [list, setList] = useState([]);
+
+  const submitEntry = entry => {
+    if (list.some(item => item.text === entry && !item.isDone)) {
+      return false;
+    }
+    setList(curList => [...curList, {text: entry, isDone: false}]);
+    return true;
+  };
+
+  const setIsDone = (isDone, index) => {
+    setList(curList => {
+      return curList.map((item, idx) => {
+        if (index === idx) {
+          return {...item, isDone};
+        }
+        return item;
+      });
+    });
+  };
+
+  const delItem = index => {
+    setList(curList => {
+      return curList.filter((_, idx) => idx !== index);
+    });
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
+    <SafeAreaView style={[styles.flexCommon, backgroundStyle]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+      <View style={styles.container}>
+        <Form submitEntry={submitEntry} />
+        <TodoList list={list} setIsDone={setIsDone} delItem={delItem} />
+      </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  flexCommon: {
+    flex: 1,
   },
-  sectionTitle: {
-    fontSize: 24,
+  container: {
+    flex: 1,
+    padding: 20,
+  },
+  heading: {
+    marginBottom: 10,
+    fontSize: 28,
     fontWeight: '600',
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
+  border: {
+    borderWidth: 1,
+    borderColor: 'lightgray',
+    borderRadius: 6,
   },
-  highlight: {
-    fontWeight: '700',
+  form: {
+    marginBottom: 30,
+  },
+  input: {
+    height: 50,
+    paddingHorizontal: 10,
+    fontSize: 18,
+  },
+  itemRow: {
+    height: 50,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  itemText: {
+    flex: 1,
+    fontSize: 16,
+    paddingHorizontal: 10,
+  },
+  delButton: {
+    width: 30,
+    alignSelf: 'stretch',
+    backgroundColor: 'lightgray',
+    borderTopRightRadius: 5,
+    borderBottomRightRadius: 5,
+  },
+  delButtonText: {
+    fontSize: 18,
+    lineHeight: 50,
+    textAlign: 'center',
   },
 });
 
